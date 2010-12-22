@@ -1,100 +1,86 @@
 module ActiveRecord
-  module MagicNumbers
+    module MagicNumbers
 
-    def self.included(base)
-      base.extend(ClassMethods)
-      base.send(:include, InstanceMethods)
-    end
-
-    module ClassMethods
-
-      def enum_attribute(name, options = {})
-        magic_number_attribute(name, options.merge({ :type => :enum }))
-      end
-
-      def bitfield_attribute(name, options = {})
-        magic_number_attribute(name, options.merge({ :type => :bitfield }))
-      end
-
-      def magic_number_for(name, value)
-        return nil if value.nil?
-        attribute_options = magic_number_attribute_options(name)
-
-        if attribute_options[:type] == :bitfield
-          value = value.map do |v|
-            attribute_options[:stringified_values].include?(v.to_s) ? v.to_s.intern : nil
-          end.compact.uniq
-
-          magic_number = 0
-          value.each { |k| magic_number |= 1 << attribute_options[:values].index(k) }
-          magic_number
-        else
-          if attribute_options[:stringified_values].include?(value.to_s)
-            attribute_options[:values].index(value.to_s.intern)
-          else
-            nil
-          end
+        def self.included(base)
+            base.extend(ClassMethods)
+            base.send(:include, InstanceMethods)
         end
-      end
 
-      def magic_number_attribute_options(name)
-        magic_number_attributes = read_inheritable_attribute(:magic_number_attributes) || {}
+        module ClassMethods
+            
+            def enum_attribute(name, values, options={})
+                magic_number_attribute(name, options.extend({
+                    :values => values,
+                    :type => :enum
+                }))
+            end
 
-        if magic_number_attributes.include?(name)
-          magic_number_attributes[name]
-        else
-          raise ArgumentError, "Could not find magic number attribute `#{name}` in class #{self.class.name}"
+            def bitfield_attribute(name, values, options={})
+                magic_number_attribute(name, options.extend({
+                    :values => values,
+                    :type => :bitfield
+                }))
+            end
+
+            def magic_number_values(name)
+                magic_number_options(name)[:values]
+            end
+
+            def magic_number_for(name, value)
+                options = self.class.magic_number_options(name)
+                values = options[:values]
+
+                value = value.is_a?(Array) ? value.map(&:to_s) : value.to_s
+
+                if options[:type] == :bitfield
+                    (values & value).map { |v| 2**values.index(v) }.sum
+                else
+                    values[value]
+                end
+            end
+
+            protected
+
+            def magic_number_options(read)
+                read_inheritable_attribute(:magic_number_attributes) || {}
+            end
+
+            def magic_number_attribute(name, options)
+                options.assert_valid_keys(:values, :type, :default) 
+                options[:values].map!(&:to_s) 
+
+                magic_number_attributes = read_inheritable_attribute(:magic_number_attributes) || {}
+
+                magic_number_attributes[name] = options
+                write_inheritable_attribute(:magic_number_attributes, magic_number_attributes)
+
+                class_eval <<-EOE
+                    def #{name}; magic_numbers_read(:#{name}); end
+                    def #{name}=(new_value); magic_numbers_write(:#{name}, new_value); end
+                    def self.#{name}_values; magic_numbers_values(:#{name}); end
+                EOE
+            end
         end
-      end
 
-    protected
+        module InstanceMethods
 
-      def magic_number_accessors(name)
-        class_eval <<-EOE
-          def #{name}; magic_number_read(:#{name}); end
-          def #{name}=(new_value); magic_number_write(:#{name}, new_value); end
-        EOE
-      end
+            def magic_number_read(name)
+                options = self.class.magic_number_options(name)
+                values = options[:values]
+                mask_value = self["#{ name }_mask"]
 
-      def magic_number_attribute(name, options = {})
-        magic_number_attributes = read_inheritable_attribute(:magic_number_attributes) || {}
-        options.assert_valid_keys(:values, :type)
+                if options[:type] == :bitfield
+                    result = values.reject { |r| ((mask_value || 0) & 2**values.index(r)).zero? }
+                    (result.empty? && options[:default]) ? options[:default] : result
+                else
+                    values[mask_value] || options[:default]
+                end
+            end
 
-        options[:stringified_values] = options[:values].map { |v| v.to_s }
-        magic_number_attributes[name] = options
-        write_inheritable_attribute(:magic_number_attributes, magic_number_attributes)
-        magic_number_accessors(name)
-      end
+            def magic_numbers_write(name, new_value)
+                self["#{ name }_mask"] = self.class.magic_number_for(name, new_value)
+            end
 
-    end
-
-    module InstanceMethods
-
-      def magic_number_read(name)
-        attribute_options = self.class.magic_number_attribute_options(name)
-
-        if attribute_options[:type] == :bitfield
-          unless self[name].nil?
-            attribute_options[:values].collect { |v| (self[name].to_i & (1 << attribute_options[:values].index(v))) > 0 ? v : nil }.compact
-          else
-            []
-          end
-        else
-          unless self[name].nil?
-            attribute_options[:values][self[name]]
-          else
-            nil
-          end
         end
-      end
-
-      def magic_number_write(name, new_value)
-        attribute_options = self.class.magic_number_attribute_options(name)
-        self[name] = self.class.magic_number_for(name, new_value)
-
-        new_value
-      end
-
     end
-  end
 end
