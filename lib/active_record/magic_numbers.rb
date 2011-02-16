@@ -46,8 +46,10 @@ module ActiveRecord
             protected
 
             def magic_number_attribute(name, options)
-                options.assert_valid_keys(:values, :type, :default) 
+                options.assert_valid_keys(:values, :type, :default, :column) 
                 options[:values].map!(&:to_s) 
+
+                options[:column] = "#{ name }_mask" unless options[:column].present?
 
                 magic_number_attributes = read_inheritable_attribute(:magic_number_attributes) || {}
 
@@ -67,7 +69,7 @@ module ActiveRecord
             def magic_number_read(name)
                 options = self.class.magic_number_options(name)
                 values = options[:values]
-                mask_value = self["#{ name }_mask"]
+                mask_value = self[options[:column]]
 
                 if options[:type] == :bitfield
                     result = values.reject { |r| ((mask_value || 0) & 2**values.index(r)).zero? }
@@ -78,7 +80,9 @@ module ActiveRecord
             end
 
             def magic_number_write(name, new_value)
-                self["#{ name }_mask"] = self.class.magic_number_for(name, new_value)
+                options = self.class.magic_number_options(name)
+
+                self[options[:column]] = self.class.magic_number_for(name, new_value)
             end
 
         end
