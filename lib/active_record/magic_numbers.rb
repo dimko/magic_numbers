@@ -49,7 +49,7 @@ module ActiveRecord
                 options.assert_valid_keys(:values, :type, :default, :column) 
                 options[:values].map!(&:to_s) 
 
-                options[:column] = "#{ name }_mask" unless options[:column].present?
+                options[:column] = name unless options[:column].present?
 
                 magic_number_attributes = read_inheritable_attribute(:magic_number_attributes) || {}
 
@@ -73,9 +73,9 @@ module ActiveRecord
 
                 if options[:type] == :bitfield
                     result = values.reject { |r| ((mask_value || 0) & 2**values.index(r)).zero? }
-                    (result.empty? && options[:default]) ? options[:default] : result
+                    (result.empty? && options[:default]) ? options[:default] : result.map(&:to_sym)
                 else
-                  (mask_value && values[mask_value]) || options[:default]
+                  (mask_value && values[mask_value].to_sym) || options[:default]
                 end
             end
 
