@@ -1,1 +1,1 @@
-ActiveRecord::Base.send(:include, ActiveRecord::MagicNumbers)
+ActiveRecord::Base.send(:include, MagicNumbers::ActiveRecord)

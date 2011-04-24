@@ -1,5 +1,5 @@
-module ActiveRecord
-    module MagicNumbers
+module MagicNumbers
+    module ActiveRecord
 
         def self.included(base)
             base.extend(ClassMethods)
