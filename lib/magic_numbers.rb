@@ -88,3 +88,5 @@ module MagicNumbers
         end
     end
 end
+
+ActiveRecord::Base.send(:include, MagicNumbers::ActiveRecord)
