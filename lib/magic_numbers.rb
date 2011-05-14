@@ -35,7 +35,7 @@ module MagicNumbers
                 if options[:type] == :bitfield
                     (values & value).map { |v| 2**values.index(v) }.sum
                 else
-                    values.index(value)
+                    values.index(value) || options[:default]
                 end
             end
 
@@ -73,9 +73,8 @@ module MagicNumbers
 
                 if options[:type] == :bitfield
                     result = values.reject { |r| ((mask_value || 0) & 2**values.index(r)).zero? }
-                    (result.empty? && options[:default]) ? options[:default] : result.map(&:to_sym)
                 else
-                  (mask_value && values[mask_value].to_sym) || options[:default]
+                  (mask_value && values[mask_value].to_sym)
                 end
             end
 
