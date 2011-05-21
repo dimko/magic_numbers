@@ -74,7 +74,7 @@ module MagicNumbers
                 if options[:type] == :bitfield
                     result = values.reject { |r| ((mask_value || 0) & 2**values.index(r)).zero? }
                 else
-                  (mask_value && values[mask_value].to_sym)
+                  (mask_value && values[mask_value].try(:to_sym))
                 end
             end
 
