@@ -24,14 +24,14 @@ module MagicNumbers
 
       def magic_number_for(name, value)
         options = self.magic_number_options(name)
-        values = options[:values]
+        values, offset = options[:values], options[:offset] || 0
 
         value = value.is_a?(Array) ? value.map(&:to_s) : value.to_s
 
         if options[:type] == :bitfield
           (values & value).map { |v| 2**values.index(v) }.sum
         else
-          values.index(value) || options[:default]
+          (values.index(value) + offset) || options[:default]
         end
       end
 
@@ -42,7 +42,7 @@ module MagicNumbers
       protected
 
         def magic_number_attribute(name, options)
-          options.assert_valid_keys(:values, :type, :default, :column)
+          options.assert_valid_keys(:values, :type, :default, :column, :offset)
           options[:values].map!(&:to_s)
 
           options[:column] = name unless options[:column].present?
@@ -65,13 +65,13 @@ module MagicNumbers
 
       def magic_number_read(name)
         options = self.class.magic_number_options(name)
-        values = options[:values]
+        values, offset = options[:values], options[:offset] || 0
         mask_value = self[options[:column]]
 
         if options[:type] == :bitfield
           result = values.reject { |r| ((mask_value || 0) & 2**values.index(r)).zero? }
         else
-          (mask_value && values[mask_value].try(:to_sym))
+          (mask_value && values[mask_value - offset].try(:to_sym))
         end
       end
 
