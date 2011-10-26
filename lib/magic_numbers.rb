@@ -4,14 +4,14 @@ module MagicNumbers
 
     module ClassMethods
 
-      def enum_attribute(name, values, options={})
+      def enum_attribute(name, values, options = {})
         magic_number_attribute(name, options.merge({
           :values => values,
           :type => :enum
         }))
       end
 
-      def bitfield_attribute(name, values, options={})
+      def bitfield_attribute(name, values, options = {})
         magic_number_attribute(name, options.merge({
           :values => values,
           :type => :bitfield
