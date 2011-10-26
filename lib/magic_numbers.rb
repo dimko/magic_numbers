@@ -1,10 +1,6 @@
 module MagicNumbers
   module ActiveRecord
-
-    def self.included(base)
-      base.extend(ClassMethods)
-      base.send(:include, InstanceMethods)
-    end
+    extend ActiveSupport::Concern
 
     module ClassMethods
 
@@ -45,23 +41,24 @@ module MagicNumbers
 
       protected
 
-      def magic_number_attribute(name, options)
-        options.assert_valid_keys(:values, :type, :default, :column) 
-        options[:values].map!(&:to_s) 
+        def magic_number_attribute(name, options)
+          options.assert_valid_keys(:values, :type, :default, :column)
+          options[:values].map!(&:to_s)
 
-        options[:column] = name unless options[:column].present?
+          options[:column] = name unless options[:column].present?
 
-        magic_number_attributes = read_inheritable_attribute(:magic_number_attributes) || {}
+          magic_number_attributes = read_inheritable_attribute(:magic_number_attributes) || {}
 
-        magic_number_attributes[name] = options
-        write_inheritable_attribute(:magic_number_attributes, magic_number_attributes)
+          magic_number_attributes[name] = options
+          write_inheritable_attribute(:magic_number_attributes, magic_number_attributes)
 
-        class_eval <<-EOE
-          def #{name}; magic_number_read(:#{name}); end
-          def #{name}=(new_value); magic_number_write(:#{name}, new_value); end
-          def self.#{name}_values; magic_number_values(:#{name}); end
-        EOE
-      end
+          class_eval <<-EOE
+            def #{name}; magic_number_read(:#{name}); end
+            def #{name}=(new_value); magic_number_write(:#{name}, new_value); end
+            def self.#{name}_values; magic_number_values(:#{name}); end
+          EOE
+        end
+
     end
 
     module InstanceMethods
