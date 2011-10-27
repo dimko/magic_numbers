@@ -31,7 +31,7 @@ module MagicNumbers
         if options[:type] == :bitfield
           (values & value).map { |v| 2**values.index(v) }.sum
         else
-          (values.index(value).try(:+, offset) || options[:default]
+          (values.index(value).try(:+, offset)) || options[:default]
         end
       end
 
