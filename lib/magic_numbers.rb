@@ -2,6 +2,10 @@ module MagicNumbers
   module ActiveRecord
     extend ActiveSupport::Concern
 
+    included do
+      class_attribute :magic_number_attributes, :instance_writer => false
+    end
+
     module ClassMethods
 
       def enum_attribute(name, values, options = {})
@@ -31,12 +35,16 @@ module MagicNumbers
         if options[:type] == :bitfield
           (values & value).map { |v| 2**values.index(v) }.sum
         else
-          (values.index(value).try(:+, offset)) || options[:default]
+          values.index(value).try(:+, offset) || options[:default]
         end
       end
 
       def magic_number_options(name)
-        read_inheritable_attribute(:magic_number_attributes)[name]
+        magic_number_attributes = self.magic_number_attributes || {}
+
+        if magic_number_attributes.has_key?(name)
+          magic_number_attributes[name]
+        end
       end
 
       protected
@@ -47,10 +55,10 @@ module MagicNumbers
 
           options[:column] = name unless options[:column].present?
 
-          magic_number_attributes = read_inheritable_attribute(:magic_number_attributes) || {}
-
+          magic_number_attributes = self.magic_number_attributes || {}
           magic_number_attributes[name] = options
-          write_inheritable_attribute(:magic_number_attributes, magic_number_attributes)
+
+          self.magic_number_attributes = magic_number_attributes
 
           class_eval <<-EOE
             def #{name}; magic_number_read(:#{name}); end
@@ -61,27 +69,24 @@ module MagicNumbers
 
     end
 
-    module InstanceMethods
+    def magic_number_read(name)
+      options = self.class.magic_number_options(name)
+      values, offset = options[:values], options[:offset] || 0
+      mask_value = self[ options[:column] ]
 
-      def magic_number_read(name)
-        options = self.class.magic_number_options(name)
-        values, offset = options[:values], options[:offset] || 0
-        mask_value = self[options[:column]]
-
-        if options[:type] == :bitfield
-          result = values.reject { |r| ((mask_value || 0) & 2**values.index(r)).zero? }
-        else
-          (mask_value && values[mask_value - offset].try(:to_sym))
-        end
+      if options[:type] == :bitfield
+        result = values.reject { |r| ((mask_value || 0) & 2**values.index(r)).zero? }
+      else
+        mask_value && values[ mask_value - offset ].try(:to_sym)
       end
-
-      def magic_number_write(name, new_value)
-        options = self.class.magic_number_options(name)
-
-        self[options[:column]] = self.class.magic_number_for(name, new_value)
-      end
-
     end
+
+    def magic_number_write(name, new_value)
+      options = self.class.magic_number_options(name)
+
+      self[ options[:column] ] = self.class.magic_number_for(name, new_value)
+    end
+
   end
 end
 
