@@ -10,8 +10,8 @@ integers.
 Magic Numbers usage is simple:
 
   class User < ActiveRecord::Base
-    enum_attribute     :state, :values => [:passive, :active, :deleted]
-    bitfield_attribute :roles, :values => [:user, :moderator, :administrator]
+    enum_attribute     :state, %w(passive active deleted)
+    bitfield_attribute :roles, %w(user moderator administrator)
   end
 
 After this you can set user's state with symbols or strings:
@@ -50,7 +50,7 @@ Sometimes (for example, in search queries) you need to get magic
 numbers which corresponds to specific values. You can use
 +magic_number_for+ method for this, i.e.:
 
-  deleted_users = @user.find(:all, :conditions => { :state => User.magic_number_for(:state, :deleted) })
+  deleted_users = @user.where(:state => User.magic_number_for(:state, :deleted))
 
 Also you can get entire magic number attribute options hash by it's name:
 
